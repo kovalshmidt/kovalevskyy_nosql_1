@@ -7,7 +7,12 @@ Before executing any script, install the requirements:
 pip3 install -r requirements.txt
 ```
 
-### 1. Execute Python script
+Create a `.env` file in the project root with your MongoDB connection string:
+```bash
+MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/spotify
+```
+
+### 1. Execute Python script to load the data
 
 ```bash
 python3 scripts/01_load_data.py
@@ -18,10 +23,80 @@ python3 scripts/01_load_data.py
 > /Applications/Python\ 3.14/Install\ Certificates.command
 > ```
 
-### 2. Execute JS script
+### 2. Execute JS script to transform tracks_raw into tracks
 
 ```bash
 mongosh "MONGO_URI" --file scripts/02_transform.js
+```
+
+---
+
+## Data Schema
+
+The `spotify` database contains two collections: `tracks_raw` (loaded as-is from the source CSV) and `tracks` (produced by the transform script).
+
+### tracks_raw
+
+Flat structure mirroring the original CSV. Artists are stored as a single string, audio features are top-level fields, and there is no derived data.
+
+```json
+{
+  "_id": { "$oid": "6a11c6b0ccf18b62c3e449cf" },
+  "track_id": "5SuOikwiRyPMVoIQDJUgSV",
+  "artists": "Gen Hoshino",
+  "album_name": "Comedy",
+  "track_name": "Comedy",
+  "popularity": 73,
+  "duration_ms": 230666,
+  "explicit": false,
+  "danceability": 0.676,
+  "energy": 0.461,
+  "key": 1,
+  "loudness": -6.746,
+  "mode": 0,
+  "speechiness": 0.143,
+  "acousticness": 0.0322,
+  "instrumentalness": 0.00000101,
+  "liveness": 0.358,
+  "valence": 0.715,
+  "tempo": 87.917,
+  "time_signature": 4,
+  "track_genre": "acoustic"
+}
+```
+
+### tracks
+
+Transformed structure with three key changes: `artists` is parsed into an array to support multi-artist tracks and array-based queries; audio features are grouped into a nested `audio_features` object; and two derived fields are added — `duration_sec` and `popularity_tier`.
+
+```json
+{
+  "_id": { "$oid": "6a1ade9d93a7c1c61b0bb8c7" },
+  "track_id": "5SuOikwiRyPMVoIQDJUgSV",
+  "album_name": "Comedy",
+  "track_name": "Comedy",
+  "popularity": 73,
+  "duration_ms": 230666,
+  "explicit": false,
+  "track_genre": "acoustic",
+  "artists": ["Gen Hoshino"],
+  "audio_features": {
+    "danceability": 0.676,
+    "energy": 0.461,
+    "loudness": -6.746,
+    "speechiness": 0.143,
+    "acousticness": 0.0322,
+    "instrumentalness": 0.00000101,
+    "liveness": 0.358,
+    "valence": 0.715,
+    "tempo": 87.917,
+    "key": 1,
+    "mode": 0,
+    "time_signature": 4
+  },
+  "duration_sec": 230.7,
+  "popularity_tier": "high"
+}
 ```
 
 ---
